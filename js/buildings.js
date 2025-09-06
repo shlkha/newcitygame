@@ -30,5 +30,5 @@ function createBuilding({name,cost,populationIncrease=0,production=null}){
 const Buildings={
   House:createBuilding({name:"House",cost:100,populationIncrease:5}),
   Farm:createBuilding({name:"Farm",cost:200,production:{amount:1,interval:2}}),
-  Big_Farm:createBuilding({name:"Big_Farm",cost:200,production:{amount:4,interval:2}}),
+  Big_Farm:createBuilding({name:"Big_Farm",cost:200,production:{amount:3,interval:2}}),
 };
