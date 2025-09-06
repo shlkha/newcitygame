@@ -1,11 +1,6 @@
 // ----- UI Module -----
 const UI = {
-  log(msg) {
-    const logDiv = document.getElementById("log");
-    if (!logDiv) return;
-    logDiv.innerHTML += msg + "<br>";
-    logDiv.scrollTop = logDiv.scrollHeight;
-  },
+  log(msg) { console.log(msg); },
   createBuildingButtons() {
     const container = document.getElementById("buildingButtons");
     for (const key in Buildings) {
@@ -18,9 +13,7 @@ const UI = {
     }
   },
   updateStats() {
-    const statsDiv = document.getElementById("stats");
-    if (!statsDiv) return;
-    statsDiv.innerHTML = `Population: <b>${City.population}</b> / ${City.populationCap} &nbsp; | &nbsp; Money: <b>${City.money}</b> &nbsp; | &nbsp; Food: <b>${City.food}</b>`;
+    console.log(`Population: ${City.population}, Money: ${City.money}, Food: ${City.food}`);
   },
   createInstanceDropdown(building, instanceId) {
     const container = document.getElementById("dropdown-container");
