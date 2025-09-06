@@ -1,0 +1,12 @@
+body { font-family: Arial,sans-serif; background:#f4f4f4; padding:20px; }
+#stats { background:white; padding:10px; margin-bottom:20px; border-radius:5px; box-shadow:0 0 5px rgba(0,0,0,0.2); }
+#actions { margin-bottom:20px; }
+.building-btn { background-color:#4CAF50; color:white; border:none; padding:10px 20px; margin:5px; border-radius:5px; cursor:pointer; font-weight:bold; transition:.2s; }
+.building-btn:hover{ background:#45a049; transform:scale(1.05); }
+.production-dropdown { margin:5px; padding:8px 12px; border-radius:5px; border:1px solid #999; font-weight:bold; cursor:pointer; background:white; transition:.2s; }
+.production-dropdown:hover{ border-color:#666; transform:scale(1.02); }
+#commandInput{width:400px;padding:8px;font-size:16px;margin-right:10px;}
+#executeCommandBtn,#toggleTutorialBtn{padding:8px 12px;font-weight:bold;cursor:pointer;}
+#log{background:black;color:limegreen;padding:10px;height:250px;overflow-y:auto;font-family:monospace;border-radius:5px;}
+details{margin-bottom:5px;}
+summary{font-weight:bold; cursor:pointer;}
