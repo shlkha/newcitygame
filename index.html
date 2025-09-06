@@ -3,31 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <title>Text-Based City Game</title>
-<style>
-  body { font-family: monospace; background: #f0f0f0; margin:0; padding:0; }
-  #gameContainer { padding: 20px; }
-  button { padding: 6px 12px; margin: 4px; border-radius: 5px; border: 1px solid #444; background-color:#ddd; cursor:pointer; }
-  button:hover { background-color: #bbb; }
-  #commandPanel { margin-top:20px; position:relative; }
-  #commandInput { width:350px; padding:6px; font-size:14px; }
-  #executeCommandBtn { padding:6px 10px; }
-  #autocompleteDropdown { border:1px solid #888; background:#fff; max-height:250px; overflow-y:auto;
-    width:350px; position:absolute; z-index:999; border-radius:4px; box-shadow:0 2px 8px rgba(0,0,0,0.2); display:none; }
-  #autocompleteDropdown div { padding:6px; cursor:pointer; }
-  #autocompleteDropdown div:hover, #autocompleteDropdown .selected { background:#4a90e2; color:white; }
-  #dropdown-container { margin-top:10px; }
-  .instance-dropdown { border:1px solid #555; background:#fefefe; border-radius:6px; box-shadow:0 2px 12px rgba(0,0,0,0.2);
-    padding:8px; margin:4px; max-height:200px; overflow-y:auto; transition:all 0.2s ease-in-out; }
-  .instance-dropdown select { width:100%; padding:5px; border-radius:4px; border:1px solid #aaa; font-size:14px; }
-  #tutorial-panel { display:none; background:#fff; padding:10px; border:1px solid #666; border-radius:6px; max-height:300px; overflow-y:auto; margin-top:10px; }
-  #tutorial-panel h4 { cursor:pointer; margin:5px 0; }
-  #tutorial-panel ul { list-style:none; padding-left:15px; margin:0; }
-  #tutorial-panel li { padding:2px 0; }
-  mark { background-color:#fffa65; color:#000; }
-</style>
+<link rel="stylesheet" href="style.css">
+<style> /* small overrides kept inline */ mark{background:#fffa65;color:#000;padding:0 2px;border-radius:2px;} </style>
 </head>
 <body>
 <div id="gameContainer">
+  <!-- Visible Stats -->
+  <div id="stats">Loading stats...</div>
+
   <!-- Building Buttons -->
   <div id="buildingButtons"></div>
 
@@ -44,20 +27,20 @@
   <!-- Tutorial Toggle -->
   <button id="toggleTutorialBtn">Toggle Tutorial</button>
 
-  <!-- Tutorial Panel -->
-  <div id="tutorial-panel">
-    <input id="tutorialSearch" placeholder="Search commands..." style="width:100%;padding:5px;margin-bottom:5px;"/>
-    
-    <div class="tutorial-category">
-      <h4 onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">Farm Commands</h4>
-      <ul style="display:block;" id="tutorialFarm">
-        <li>Farm1 request dropdown — configure single farm</li>
-        <li>Farm(1-5) request dropdown — bulk configure farms</li>
-        <li>Farm view interval>10 — filter farms</li>
-      </ul>
-    </div>
+  <!-- Tutorial Panel (will be filled dynamically) -->
+  <div id="tutorial-panel"></div>
 
-    <div class="tutorial-category">
+  <!-- In-page log -->
+  <div id="log"></div>
+</div>
+
+<!-- Scripts: load city state first, then buildings, UI, game logic -->
+<script src="js/city.js"></script>
+<script src="js/buildings.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js" defer></script>
+</body>
+</html>
       <h4 onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">House Commands</h4>
       <ul style="display:block;" id="tutorialHouse">
         <li>House1 view — see house stats</li>
@@ -75,11 +58,37 @@
       </ul>
     </div>
   </div>
+
+  <!-- In-page log -->
+  <div id="log"></div>
 </div>
 
-<!-- Scripts -->
-<script src="buildings.js"></script>
-<script src="UI.js"></script>
-<script src="game.js" defer></script>
+<!-- Scripts: load city state first, then buildings, UI, game logic -->
+<script src="js/city.js"></script>
+<script src="js/buildings.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js" defer></script>
+</body>
+</html>
+    <div class="tutorial-category">
+      <h4 onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">Dropdown & Config</h4>
+      <ul style="display:block;" id="tutorialDropdown">
+        <li>dropdown hide all — remove all dropdowns</li>
+        <li>dropdown hide abr — remove all but last dropdown</li>
+        <li>dropdown config replaceOnDropdown true — auto replace next dropdown</li>
+        <li>dropdown config replaceOnDropdown false — disable auto replace</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- In-page log -->
+  <div id="log"></div>
+</div>
+
+<!-- Scripts: load city state first, then buildings, UI, game logic -->
+<script src="js/city.js"></script>
+<script src="js/buildings.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js" defer></script>
 </body>
 </html>
