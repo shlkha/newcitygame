@@ -1,6 +1,6 @@
-function createBuilding({name,cost,populationIncrease=0,production=null}){
+function createBuilding({name,cost,populationIncrease=0,production=null,buildingType='generic'}){
   return {
-    name,cost,populationIncrease,production,instances:[],
+    name,cost,populationIncrease,production,buildingType,instances:[],
     build(){
       if(City.money<this.cost){ UI.log(`Not enough money for ${this.name}`); return;}
       City.changeMoney(-this.cost);
@@ -43,11 +43,11 @@ function createBuilding({name,cost,populationIncrease=0,production=null}){
 
 // Add extra house/farm types (modular — reuse createBuilding)
 const Buildings={
-  House:createBuilding({name:"House",cost:100,populationIncrease:5}),
-  Apartment:createBuilding({name:"Apartment",cost:250,populationIncrease:8}),
-  Villa:createBuilding({name:"Villa",cost:600,populationIncrease:15}),
-  Cottage:createBuilding({name:"Cottage",cost:70,populationIncrease:3}),
-  Farm:createBuilding({name:"Farm",cost:200,production:{amount:1,interval:2}}),
-  Big_Farm:createBuilding({name:"Big_Farm",cost:200,production:{amount:3,interval:2}}),
-  Mega_Farm:createBuilding({name:"Mega_Farm",cost:800,production:{amount:10,interval:10}}),
+  House:createBuilding({name:"House",cost:100,populationIncrease:5, buildingType: 'house'}),
+  Apartment:createBuilding({name:"Apartment",cost:250,populationIncrease:8, buildingType: 'house'}),
+  Villa:createBuilding({name:"Villa",cost:600,populationIncrease:15, buildingType: 'house'}),
+  Cottage:createBuilding({name:"Cottage",cost:70,populationIncrease:3, buildingType: 'house'}),
+  Farm:createBuilding({name:"Farm",cost:200,production:{amount:1,interval:2}, buildingType: 'farm'}),
+  Big_Farm:createBuilding({name:"Big_Farm",cost:200,production:{amount:3,interval:2}, buildingType: 'farm'}),
+  Mega_Farm:createBuilding({name:"Mega_Farm",cost:800,production:{amount:10,interval:2}, buildingType: 'farm'}),
 };

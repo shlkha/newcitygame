@@ -1,10 +1,11 @@
-// ----- Presets used by instance & range dropdowns -----
+// ----- Preset options used by instance & range dropdowns (multiplier + fixed interval) -----
 const PRESET_OPTIONS = [
-  { key: 'default', label: 'Default (1 per 2s)', amount: 1, interval: 2 },
-  { key: '2x',      label: '2x per 3s',         amount: 2, interval: 3 },
-  { key: '30x',     label: '30x per 25s',       amount: 30, interval: 25 },
-  { key: '100x',    label: '100x per 80s',      amount: 100, interval: 80 },
-  { key: '500x',    label: '500x per 350s',     amount: 500, interval: 350 },
+  { key: '1x',   mult: 1,   interval: 2,   label: '1x per 2s'   },
+  { key: '3x',   mult: 3,   interval: 5,   label: '3x per 5s'   },
+  { key: '5x',   mult: 5,   interval: 12,  label: '5x per 12s'  },
+  { key: '30x',  mult: 30,  interval: 35,  label: '30x per 35s' },
+  { key: '100x', mult: 100, interval: 90,  label: '100x per 90s'},
+  { key: '500x', mult: 500, interval: 400, label: '500x per 400s'}
 ];
 
 // ----- UI Module -----
@@ -51,17 +52,21 @@ const UI = {
   updateStats() {
     const stats = document.getElementById("stats");
     if(!stats) return;
-    // show relevant City values (fallbacks if undefined)
-    const pop = City.population ?? 0;
-    const cap = City.populationCap ?? 0;
-    const money = City.money ?? 0;
-    const food = City.food ?? 0;
-    const happy = City.happiness ?? '—';
-    stats.innerHTML = `Population: ${pop} / ${cap} &nbsp; | &nbsp; Money: ${money} &nbsp; | &nbsp; Food: ${food} &nbsp; | &nbsp; Happiness: ${happy}`;
-    // also update console for dev
-    console.log(`Stats → Population: ${pop}/${cap}, Money: ${money}, Food: ${food}, Happiness: ${happy}`);
+    // build a display of all City properties
+    const parts = [];
+    for(const k of Object.keys(City)){
+      parts.push(`${k}: ${City[k]}`);
+    }
+    stats.innerHTML = parts.join(' &nbsp; | &nbsp; ');
+    console.log(`Stats → ${parts.join(', ')}`);
   },
   createInstanceDropdown(building, instanceId) {
+    // Prevent creating dropdowns for house-type buildings
+    if(building.buildingType && building.buildingType.toLowerCase()==='house'){
+      UI.log(`❌ ${building.name} is a house-type building — request dropdown not available.`);
+      return;
+    }
+
     const container = document.getElementById("dropdown-container");
     if (!container) return;
     if (dropdownConfig.replaceOnDropdown) {
@@ -85,28 +90,34 @@ const UI = {
     header.textContent = `${building.name} #${instanceId} — quick presets`;
     div.appendChild(header);
 
-    // Select using same presets as screenshot
+    // Select using multipliers derived from building.production.amount
     const select = document.createElement("select");
     select.className = "production-dropdown";
+
+    // base production amount for this building (fallback 1)
+    const baseAmount = (building.production && building.production.amount) ? building.production.amount : 1;
+
     PRESET_OPTIONS.forEach(opt => {
+      const amount = baseAmount * opt.mult;
       const o = document.createElement("option");
       o.value = opt.key;
-      o.textContent = opt.label;
+      o.textContent = `${opt.label} → ${amount}`;
       select.appendChild(o);
     });
 
-    // If building has custom instance values, try to match to a preset
+    // Try to set select to match current instance amount (by multiplier)
     const inst = building.instances[instanceId-1];
-    if(inst && inst.amount !== undefined && inst.interval !== undefined){
-      const matched = PRESET_OPTIONS.find(p => p.amount===inst.amount && p.interval===inst.interval);
+    if(inst && inst.amount !== undefined){
+      const matched = PRESET_OPTIONS.find(p => (baseAmount * p.mult) === inst.amount && p.interval === inst.interval);
       if(matched) select.value = matched.key;
     }
 
-    // apply preset on change (immediate)
+    // apply preset on change (immediate) — only update amounts; keep intervals unchanged
     select.addEventListener("change", () => {
       const sel = PRESET_OPTIONS.find(p => p.key === select.value);
       if(!sel){ UI.log("Invalid preset"); return; }
-      const amount = sel.amount, interval = sel.interval;
+      const amount = baseAmount * sel.mult;
+      const interval = sel.interval;
       if(typeof building.configureInstance === 'function'){
         building.configureInstance(instanceId, amount, interval);
       } else {
@@ -204,6 +215,12 @@ const UI = {
   },
   // Create a single dropdown that configures a range of instances (start..end)
   createRangeDropdown(building, start, end) {
+    // Prevent creating range dropdowns for house-type buildings
+    if(building.buildingType && building.buildingType.toLowerCase()==='house'){
+      UI.log(`❌ ${building.name} is a house-type building — range dropdown not available.`);
+      return;
+    }
+
     const container = document.getElementById("dropdown-container");
     if (!container) return;
     if (dropdownConfig.replaceOnDropdown) {
@@ -235,16 +252,20 @@ const UI = {
     if (building.production) {
       const select = document.createElement("select");
       select.className = "production-dropdown";
+
+      const baseAmount = (building.production && building.production.amount) ? building.production.amount : 1;
       PRESET_OPTIONS.forEach(opt => {
+        const amount = baseAmount * opt.mult;
         const o = document.createElement("option");
         o.value = opt.key;
-        o.textContent = opt.label;
+        o.textContent = `${opt.label} → ${amount}`;
         select.appendChild(o);
       });
-      // optional: detect if all instances share a preset and preselect it
+
+      // preselect if first instance matches a multiplier
       const firstInst = building.instances[start-1];
-      if(firstInst){
-        const matched = PRESET_OPTIONS.find(p => p.amount===firstInst.amount && p.interval===firstInst.interval);
+      if(firstInst && firstInst.amount !== undefined && firstInst.interval !== undefined){
+        const matched = PRESET_OPTIONS.find(p => (baseAmount * p.mult) === firstInst.amount && p.interval === firstInst.interval);
         if(matched) select.value = matched.key;
       }
 
@@ -252,7 +273,8 @@ const UI = {
       select.addEventListener("change", () => {
         const sel = PRESET_OPTIONS.find(p => p.key === select.value);
         if(!sel){ UI.log("Invalid preset"); return; }
-        const amount = sel.amount, interval = sel.interval;
+        const amount = baseAmount * sel.mult;
+        const interval = sel.interval;
         if(typeof building.configureRange === 'function'){
           building.configureRange(start, end, amount, interval);
         } else {
@@ -317,6 +339,15 @@ const UI = {
   }
 };
 
+// Initialize building buttons and tutorial toggle (single initializer)
+document.addEventListener("DOMContentLoaded", () => {
+  UI.createBuildingButtons();
+  const toggleBtn = document.getElementById("toggleTutorialBtn");
+  if(toggleBtn) toggleBtn.addEventListener("click", () => UI.toggleTutorialPanel());
+  UI.updateStats();
+  UI.refreshTutorial();
+  UI.log("Welcome to the Text-Based City Game!");
+});
 // Initialize building buttons and tutorial toggle
 document.addEventListener("DOMContentLoaded", () => {
   UI.createBuildingButtons();
