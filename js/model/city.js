@@ -9,4 +9,4 @@
     changeMoney(amount){ this.money += amount; },
     changeFood(amount){ this.food += amount; }
   };
-})(window.Game = window.Game || {});
+})(window.Game);

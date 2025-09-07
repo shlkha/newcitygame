@@ -1,137 +1,137 @@
 // ----- Cleaned game.js: single source for autocomplete & commands -----
 
-// Dropdown & config
-let dropdownConfig = { replaceOnDropdown: false };
-let activeDropdowns = [];
+// Create App under Game; use namespace references; ensure execute button calls App.processCommand; apply efficient autocomplete and guarded game loop.
+(function(ns){
+  if(ns.App) return; // already initialized
 
-// template cache
-let cachedTemplates = null;
-function invalidateTemplates(){ cachedTemplates = null; }
-window.invalidateTemplates = invalidateTemplates;
+  ns.dropdownConfig = ns.dropdownConfig || { replaceOnDropdown: false };
+  ns.activeDropdowns = ns.activeDropdowns || [];
 
-// DOM refs (may be null during build; guard usage)
-const commandInput = document.getElementById("commandInput");
-const autoDropdown = document.getElementById("autocompleteDropdown");
-const executeBtn = document.getElementById("executeCommandBtn");
+  ns.App = {
+    // helpers
+    escapeForRegex(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); },
+    levenshtein(a,b){
+      if(a===b) return 0;
+      const al=a.length, bl=b.length;
+      if(al===0) return bl;
+      if(bl===0) return al;
+      const dp = Array(al+1).fill(null).map(()=>Array(bl+1).fill(0));
+      for(let i=0;i<=al;i++) dp[i][0]=i;
+      for(let j=0;j<=bl;j++) dp[0][j]=j;
+      for(let i=1;i<=al;i++){
+        for(let j=1;j<=bl;j++){
+          const cost = a[i-1]===b[j-1] ? 0 : 1;
+          dp[i][j] = Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+cost);
+          if(i>1 && j>1 && a[i-1]===b[j-2] && a[i-2]===b[j-1]) dp[i][j] = Math.min(dp[i][j], dp[i-2][j-2]+cost);
+        }
+      }
+      return dp[al][bl];
+    },
+    commandMatchesPrefix(template, input){
+      const t = template.toLowerCase().split(/\s+/);
+      const p = input.toLowerCase().trim().split(/\s+/);
+      if(p.length===1 && p[0]==='') return false;
+      for(let i=0;i<p.length;i++){ if(i>=t.length) return false; if(!t[i].startsWith(p[i])) return false; }
+      return true;
+    },
 
-// Helpers
-function escapeForRegex(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
-function levenshtein(a,b){
-  if(a===b) return 0;
-  const al=a.length, bl=b.length;
-  if(al===0) return bl;
-  if(bl===0) return al;
-  const dp = Array(al+1).fill(null).map(()=>Array(bl+1).fill(0));
-  for(let i=0;i<=al;i++) dp[i][0]=i;
-  for(let j=0;j<=bl;j++) dp[0][j]=j;
-  for(let i=1;i<=al;i++){
-    for(let j=1;j<=bl;j++){
-      const cost = a[i-1]===b[j-1] ? 0 : 1;
-      dp[i][j] = Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+cost);
-      if(i>1 && j>1 && a[i-1]===b[j-2] && a[i-2]===b[j-1]) dp[i][j] = Math.min(dp[i][j], dp[i-2][j-2]+cost);
+    generateCommandTemplates(){
+      if(ns.App._tpl) return ns.App._tpl;
+      const templates = new Set(["stats","help","dropdown hide all","dropdown hide abr","dropdown config replaceOnDropdown true","dropdown config replaceOnDropdown false"]);
+      for(const key in ns.Buildings){
+        const b = ns.Buildings[key];
+        const base = b.name; const count = b.instances.length;
+        for(let i=1;i<=count;i++){ if(!(b.buildingType && b.buildingType.toLowerCase()==='house')) templates.add(`${base}${i} request dropdown`); templates.add(`${base}${i} view`); }
+        if(count>1){ if(!(b.buildingType && b.buildingType.toLowerCase()==='house')) templates.add(`${base}(1-${count}) request dropdown`); templates.add(`${base}(1-${count}) view`); }
+        if(count>0 && !(b.buildingType && b.buildingType.toLowerCase()==='house')) templates.add(`${base}..all request dropdown`);
+        templates.add(`list amount ${base}`); templates.add(`${base} view`);
+        if(b.production){ templates.add(`${base} view interval>`); templates.add(`${base} view amount>`); } else if(b.populationIncrease){ templates.add(`${base} view populationIncrease>`); }
+        templates.add(`build ${base}`);
+      }
+      ns.App._tpl = Array.from(templates);
+      return ns.App._tpl;
+    },
+
+    shouldAutocorrect(raw,score){
+      if(/[0-9]/.test(raw)) return false;
+      return score <= 2;
+    },
+
+    processCommand(cmd){
+      if(!cmd) return true;
+      let match;
+      if(/^dropdown hide all$/i.test(cmd)){ document.getElementById("dropdown-container").innerHTML=''; ns.activeDropdowns = []; ns.UI.log("✅ All dropdowns removed"); return true; }
+      if(/^dropdown hide abr$/i.test(cmd)){ if(ns.activeDropdowns.length>1){ const mostRecent=ns.activeDropdowns[ns.activeDropdowns.length-1]; ns.activeDropdowns.slice(0,-1).forEach(d=>d.remove()); ns.activeDropdowns=[mostRecent]; } ns.UI.log("✅ All but most recent dropdown removed"); return true; }
+      if(/^dropdown config replaceOnDropdown true$/i.test(cmd)){ ns.dropdownConfig.replaceOnDropdown=true; document.getElementById("dropdown-container").innerHTML=''; ns.activeDropdowns=[]; ns.UI.log("✅ replaceOnDropdown TRUE & all dropdowns cleared"); return true; }
+      if(/^dropdown config replaceOnDropdown false$/i.test(cmd)){ ns.dropdownConfig.replaceOnDropdown=false; ns.UI.log("✅ replaceOnDropdown FALSE"); return true; }
+
+      if(/^stats\s*$/i.test(cmd)){ ns.UI.updateStats(); ns.UI.log("✅ Stats updated"); return true; }
+      if(match = cmd.match(/^stats\s+([^\s]+)$/i)){ const rawKey = match[1]; const key = (function(n){ const lk=n.toLowerCase(); for(const k of Object.keys(ns.City)) if(k.toLowerCase()===lk) return k; return null;})(rawKey); if(key!==null) ns.UI.log(`${key}: ${ns.City[key]}`); else ns.UI.log(`Stat "${rawKey}" not found`); return true; }
+
+      if(/^help$/i.test(cmd)){ document.getElementById("tutorial-panel").style.display='block'; ns.UI.log("✅ Tutorial opened"); return true; }
+
+      if(match = cmd.match(/^list amount (\w+)(?:\s+(.+))?/i)){
+        const b = (ns.getBuilding?ns.getBuilding:ns.Buildings)[match[1]] || (function(n){ const ln=n.toLowerCase(); for(const k in ns.Buildings) if(k.toLowerCase()===ln) return ns.Buildings[k]; return null;})(match[1]);
+        if(!b){ ns.UI.log("❌ Building not found"); return true; }
+        const filter = match[2]||null;
+        // fallback: use UI.applyFilters if exists, else App.applyFilters
+        const instances = (ns.App.applyFilters?ns.App.applyFilters(b.instances,filter):b.instances);
+        ns.UI.log(`${b.name}: ${instances.length} instance(s)`); ns.UI.log("✅ Command executed successfully");
+        return true;
+      }
+
+      // other command handlers: request dropdown / view / ranges / build
+      // reuse earlier implementations but using ns.UI and ns.Buildings
+      if(match = cmd.match(/^(\w+)(\d+)\s+request dropdown$/i)){
+        const name = match[1], id = parseInt(match[2]); let b = ns.Buildings[name] || (function(n){ const ln=n.toLowerCase(); for(const k in ns.Buildings) if(k.toLowerCase()===ln) return ns.Buildings[k]; return null;})(name);
+        if(!b){ ns.UI.log("❌ Building not found"); return true; }
+        if(b.buildingType && b.buildingType.toLowerCase()==='house'){ ns.UI.log("❌ Request dropdown not available for house-type buildings"); return true; }
+        ns.UI.createInstanceDropdown(b, id); ns.UI.log("✅ Command executed successfully"); return true;
+      }
+
+      if(match = cmd.match(/^(\w+)(\d+)\s+view$/i)){
+        const name = match[1], id=parseInt(match[2]); let b = ns.Buildings[name] || (function(n){ const ln=n.toLowerCase(); for(const k in ns.Buildings) if(k.toLowerCase()===ln) return ns.Buildings[k]; return null;})(name);
+        if(!b){ ns.UI.log("❌ Building not found"); return true; }
+        b.viewInstance(id); ns.UI.log("✅ Command executed successfully"); return true;
+      }
+
+      if(match = cmd.match(/^(\w+)\((\d+)-(\d+)\)\s+request dropdown$/i)){
+        const name=match[1], s=parseInt(match[2]), e=parseInt(match[3]); let b = ns.Buildings[name] || (function(n){ const ln=n.toLowerCase(); for(const k in ns.Buildings) if(k.toLowerCase()===ln) return ns.Buildings[k]; return null;})(name);
+        if(!b){ ns.UI.log("❌ Building not found"); return true; }
+        if(b.buildingType && b.buildingType.toLowerCase()==='house'){ ns.UI.log("❌ Range dropdown not available for house-type buildings"); return true; }
+        ns.UI.createRangeDropdown(b, s, e); ns.UI.log("✅ Range dropdown created"); return true;
+      }
+
+      if(match = cmd.match(/^(\w+)\.\.all\s+request dropdown$/i)){ const name=match[1]; let b = ns.Buildings[name] || (function(n){ const ln=n.toLowerCase(); for(const k in ns.Buildings) if(k.toLowerCase()===ln) return ns.Buildings[k]; return null;})(name);
+        if(!b){ ns.UI.log("❌ Building not found"); return true; }
+        if(b.buildingType && b.buildingType.toLowerCase()==='house'){ ns.UI.log("❌ Range dropdown not available for house-type buildings"); return true; }
+        if(b.instances.length===0){ ns.UI.log("❌ No instances to configure"); return true; }
+        ns.UI.createRangeDropdown(b,1,b.instances.length); ns.UI.log("✅ Range dropdown created for all instances"); return true;
+      }
+
+      if(match = cmd.match(/^build\s+(\w+)$/i)){
+        const name=match[1]; let b = ns.Buildings[name] || (function(n){ const ln=n.toLowerCase(); for(const k in ns.Buildings) if(k.toLowerCase()===ln) return ns.Buildings[k]; return null;})(name);
+        if(b){ b.build(); ns.UI.createBuildingButtons(); ns.UI.updateStats(); if(typeof ns.UI.refreshTutorial === 'function') ns.UI.refreshTutorial(); return true; }
+      }
+
+      return false;
     }
-  }
-  return dp[al][bl];
-}
-function commandMatchesPrefix(template, input){
-  const t = template.toLowerCase().split(/\s+/);
-  const p = input.toLowerCase().trim().split(/\s+/);
-  if(p.length===1 && p[0]==='') return false;
-  for(let i=0;i<p.length;i++){
-    if(i>=t.length) return false;
-    if(!t[i].startsWith(p[i])) return false;
-  }
-  return true;
-}
-function getBuilding(name){
-  if(!name) return null;
-  const keys = Object.keys(Buildings);
-  const ln = name.toLowerCase();
-  for(const key of keys){
-    if(key.toLowerCase()===ln) return Buildings[key];
-    if(key.toLowerCase().startsWith(ln)) return Buildings[key];
-  }
-  return null;
-}
+  };
 
-// Fast filter parsing
-function applyFilters(instances, filterStr){
-  if(!filterStr) return instances;
-  const cleaned = filterStr.replace(/\s+/g,' ').trim();
-  const regex = /^([a-zA-Z_]+)\s*(<=|>=|<|>)\s*([+-]?\d+(\.\d+)?)$/;
-  const m = cleaned.match(regex);
-  if(!m){
-    const m2 = filterStr.match(/([a-zA-Z_]+)(<=|>=|<|>)([+-]?\d+(\.\d+)?)/);
-    if(!m2) return instances;
-    return applyFilters(instances, `${m2[1]}${m2[2]}${m2[3]}`);
+  // wire execute button and input handlers
+  function initBindings(){
+    const cmdInput = document.getElementById('commandInput');
+    const execBtn = document.getElementById('executeCommandBtn');
+    if(execBtn) execBtn.addEventListener('click', ()=>{ const raw = (cmdInput && cmdInput.value||'').trim(); if(!raw) return; ns.UI.log("> "+raw); const ok = ns.App.processCommand(raw); if(!ok){ const templates = ns.App.generateCommandTemplates(); let best=null, bestScore=Infinity; for(const t of templates){ const s = ns.App.levenshtein(raw.toLowerCase(), t.toLowerCase()); if(s<bestScore){ bestScore=s; best=t; }} if(best && ns.App.shouldAutocorrect(raw,bestScore)){ ns.UI.log(`Autocorrect → "${best}" (distance ${bestScore}). Executing…`); ns.App.processCommand(best); } else ns.UI.log("❌ Command not recognized. Type 'help' to view tutorial."); } if(cmdInput) cmdInput.value=''; });
+    // defer autocomplete/key wiring to UI module (UI already handles it)
   }
-  let attr = m[1], op = m[2], val = parseFloat(m[3]);
-  const lower = attr.toLowerCase();
-  if(lower === 'pop' || lower === 'population') attr = 'populationIncrease';
-  else if(lower === 'populationincrease') attr = 'populationIncrease';
-  else if(lower === 'amt') attr = 'amount';
-  else if(lower === 'int' || lower === 'intervals') attr = 'interval';
-  const out = [];
-  if(op === '>'){
-    for(let i=0;i<instances.length;i++){ const v = instances[i][attr]; if(v!==undefined && v>val) out.push(instances[i]); }
-  } else if(op === '>='){
-    for(let i=0;i<instances.length;i++){ const v = instances[i][attr]; if(v!==undefined && v>=val) out.push(instances[i]); }
-  } else if(op === '<'){
-    for(let i=0;i<instances.length;i++){ const v = instances[i][attr]; if(v!==undefined && v<val) out.push(instances[i]); }
-  } else if(op === '<='){
-    for(let i=0;i<instances.length;i++){ const v = instances[i][attr]; if(v!==undefined && v<=val) out.push(instances[i]); }
-  }
-  return out;
-}
-function paginate(list,page=1,pageSize=10){ const start=(page-1)*pageSize; return list.slice(start,start+pageSize); }
 
-// Templates (cached)
-function generateCommandTemplates(){
-  if(cachedTemplates) return cachedTemplates;
-  const templates = new Set([
-    "stats","help",
-    "dropdown hide all","dropdown hide abr",
-    "dropdown config replaceOnDropdown true","dropdown config replaceOnDropdown false"
-  ]);
-  for(const key in Buildings){
-    const b = Buildings[key];
-    const base = b.name; const count = b.instances.length;
-    for(let i=1;i<=count;i++){
-      if(!(b.buildingType && b.buildingType.toLowerCase()==='house')) templates.add(`${base}${i} request dropdown`);
-      templates.add(`${base}${i} view`);
-    }
-    if(count>1){
-      if(!(b.buildingType && b.buildingType.toLowerCase()==='house')) templates.add(`${base}(1-${count}) request dropdown`);
-      templates.add(`${base}(1-${count}) view`);
-    }
-    if(count>0 && !(b.buildingType && b.buildingType.toLowerCase()==='house')) templates.add(`${base}..all request dropdown`);
-    templates.add(`list amount ${base}`);
-    templates.add(`${base} view`);
-    if(b.production){ templates.add(`${base} view interval>`); templates.add(`${base} view amount>`); }
-    else if(b.populationIncrease){ templates.add(`${base} view populationIncrease>`); }
-    templates.add(`build ${base}`);
-  }
-  cachedTemplates = Array.from(templates);
-  return cachedTemplates;
-}
-function shouldAutocorrect(raw, score){ if(/[0-9]/.test(raw)) return false; return score <= 2; }
+  document.addEventListener('DOMContentLoaded', initBindings);
 
-// Autocomplete rendering & behavior
-let selectedIndex = -1, tabResetTimeout;
-function updateSelection(){
-  const options = autoDropdown.querySelectorAll("div");
-  options.forEach(o=>o.classList.remove("selected"));
-  if(selectedIndex>=0 && options[selectedIndex]) options[selectedIndex].classList.add("selected");
-  const sel = options[selectedIndex];
-  if(sel) {
-    const top = sel.offsetTop, bottom = top + sel.offsetHeight;
-    if(top < autoDropdown.scrollTop) autoDropdown.scrollTop = top;
-    else if(bottom > autoDropdown.scrollTop + autoDropdown.clientHeight) autoDropdown.scrollTop = bottom - autoDropdown.clientHeight;
-  }
-}
+  // game loop
+  setInterval(()=>{ if(ns.City && ns.Buildings){ if(ns.City.population < ns.City.populationCap) ns.City.addPopulation(1); ns.City.changeMoney(ns.City.population*2); for(const k in ns.Buildings){ const b=ns.Buildings[k]; if(b.production) b.instances.forEach(inst=>{ inst.timer++; if(inst.timer>=inst.interval){ ns.City.food += inst.amount; inst.timer = 0; } }); } if(ns.UI && typeof ns.UI.updateStats === 'function') ns.UI.updateStats(); } },1000);
 
-if(commandInput){
-  commandInput.addEventListener("input", ()=>{
+})(window.Game = window.Game || {}); // end of App IIFE
     const raw = commandInput.value;
     const val = raw.trim().toLowerCase();
     if(!val){ if(autoDropdown) autoDropdown.style.display='none'; return; }

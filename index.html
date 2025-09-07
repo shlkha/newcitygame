@@ -4,40 +4,40 @@
 <meta charset="UTF-8">
 <title>Text-Based City Game</title>
 <link rel="stylesheet" href="style.css">
-<style> /* small overrides kept inline */ mark{background:#fffa65;color:#000;padding:0 2px;border-radius:2px;} </style>
+<style> mark{background:#fffa65;color:#000;padding:0 2px;border-radius:2px;} </style>
 </head>
 <body>
 <div id="gameContainer">
-  <!-- Visible Stats -->
   <div id="stats">Loading stats...</div>
-
-  <!-- Building Buttons -->
   <div id="buildingButtons"></div>
 
-  <!-- Command Panel -->
   <div id="commandPanel">
     <input type="text" id="commandInput" placeholder="Type command..." autocomplete="off"/>
     <button id="executeCommandBtn">Execute</button>
     <div id="autocompleteDropdown"></div>
   </div>
 
-  <!-- Instance Dropdown Container -->
   <div id="dropdown-container"></div>
 
-  <!-- Tutorial Toggle -->
   <button id="toggleTutorialBtn">Toggle Tutorial</button>
-
-  <!-- Tutorial Panel (will be filled dynamically) -->
   <div id="tutorial-panel"></div>
-
-  <!-- In-page log -->
   <div id="log"></div>
 </div>
 
-<!-- Scripts: load city state first, then buildings, UI, game logic (each only once) -->
-<script src="js/city.js"></script>
-<script src="js/buildings.js"></script>
-<script src="js/ui.js"></script>
+<!-- Modular scripts (load once, ordered) -->
+<script src="js/namespace.js" defer></script>
+<script src="js/model/city.js" defer></script>
+<script src="js/model/buildings.js" defer></script>
+<script src="js/ui/core.js" defer></script>
+<script src="js/ui/dropdowns.js" defer></script>
+<script src="js/app/commands.js" defer></script>
+<script src="js/app/autocomplete.js" defer></script>
+<script src="js/main.js" defer></script>
+</body>
+</html>
+<script src="js/city.js" defer></script>
+<script src="js/buildings.js" defer></script>
+<script src="js/ui.js" defer></script>
 <script src="js/game.js" defer></script>
 </body>
 </html>
